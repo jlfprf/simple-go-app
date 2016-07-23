@@ -40,11 +40,7 @@ func main() {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	// t, err := template.ParseFiles("views/base.html", "views/index.html")
-	// checkError(err, &w, r)
-	// t.ExecuteTemplate(w, "Base", struct{ Title string }{Title: "Default Go Templating"})
-	// err := tmpls["index"].ExecuteTemplate(w, "Base", struct{ Title string }{Title: "Default Go Templating"})
-	err := tmpls["index"].ExecuteTemplate(w, "Base", map[string]string{"Title": "Default Templating with Maps"})
+	err := tmpls["index"].ExecuteTemplate(w, "Base", map[string]interface{}{"Title": "Default Templating with Maps"})
 	checkError(err, &w, r)
 }
 
@@ -58,12 +54,6 @@ func dbHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) {
-	// t, err := template.ParseFiles("views/base.html", "views/error.html")
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
-	// t.ExecuteTemplate(w, "Base", struct{ Title string }{Title: "Default Go Templating"})
 	err := tmpls["error"].ExecuteTemplate(w, "Base", struct{ Title string }{Title: "Default Go Templating"})
 	checkError(err, &w, r)
 }
