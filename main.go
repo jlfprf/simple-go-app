@@ -14,6 +14,8 @@ var tmpls = make(map[string]*template.Template)
 
 func main() {
 
+	tmpls = createTemplates()
+
 	db, err := sql.Open("postgres", "user=postgres password=mdibhf dbname=pgdatabase")
 	if err != nil {
 		fmt.Println(err.Error())
@@ -21,8 +23,6 @@ func main() {
 	}
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-
-	tmpls = createTemplates()
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/db", dbHandler(db))
@@ -78,9 +78,17 @@ func checkError(err error, w *http.ResponseWriter, r *http.Request) {
 
 func createTemplates() map[string]*template.Template {
 	var tmpls = make(map[string]*template.Template)
-	t, _ := template.ParseFiles("views/base.html", "views/index.html")
+	t, err := template.ParseFiles("views/base.html", "views/index.html")
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 	tmpls["index"] = t
-	t, _ = template.ParseFiles("views/base.html", "views/error.html")
+	t, err = template.ParseFiles("views/base.html", "views/error.html")
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 	tmpls["error"] = t
 	return tmpls
 }
