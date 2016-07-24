@@ -10,11 +10,12 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var tmpls = make(map[string]*template.Template)
+var tmplToParse = []string{"index", "error"}
+var tmplsParsed = make(map[string]*template.Template)
 
 func main() {
 
-	tmpls = createTemplates()
+	tmplsParsed = createTemplates(tmplToParse)
 
 	db, err := sql.Open("postgres", "user=postgres password=mdibhf dbname=pgdatabase")
 	if err != nil {
@@ -26,6 +27,7 @@ func main() {
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/db", dbHandler(db))
+	http.HandleFunc("/changedata", changeDBData(db))
 	http.HandleFunc("/error", errorHandler)
 
 	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
@@ -40,24 +42,43 @@ func main() {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	err := tmpls["index"].ExecuteTemplate(w, "Base", map[string]interface{}{"Title": "Default Templating with Maps"})
+	err := tmplsParsed["index"].ExecuteTemplate(w, "Base", map[string]interface{}{"Title": "Default Templating with Maps"})
 	checkError(err, &w, r)
 }
 
 func dbHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var name, email string
-		_ = db.QueryRow("select name, email from users where name = $1", "rctf").Scan(&name, &email)
+		_ = db.QueryRow("select name, email from users where name = $1", "jlf").Scan(&name, &email)
 		s := fmt.Sprintf("Name: %s\nEmail: %s", name, email)
 		fmt.Fprint(w, s)
 	}
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) {
-	err := tmpls["error"].ExecuteTemplate(w, "Base", struct{ Title string }{Title: "Default Go Templating"})
+	err := tmplsParsed["error"].ExecuteTemplate(w, "Base", struct{ Title string }{Title: "Default Go Templating"})
 	checkError(err, &w, r)
 }
 
+//----------------------------Testing-----------------------------------
+func changeDBData(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := r.FormValue("u")
+		e := r.FormValue("e")
+		if u != "" && e != "" {
+			fmt.Println(u, e)
+			_, err := db.Exec("insert into users (name, email) values ($1, $2)", []byte(u), []byte(e))
+			if err != nil {
+				fmt.Fprint(w, err.Error())
+			}
+			fmt.Fprint(w, "Database updated")
+			return
+		}
+		fmt.Fprint(w, "You need to provide a user.")
+	}
+}
+
+//===========================Utils===================================
 func checkError(err error, w *http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err.Error())
@@ -66,19 +87,15 @@ func checkError(err error, w *http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createTemplates() map[string]*template.Template {
+func createTemplates(tmplToParse []string) map[string]*template.Template {
 	var tmpls = make(map[string]*template.Template)
-	t, err := template.ParseFiles("views/base.html", "views/index.html")
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+	for i := range tmplToParse {
+		t, err := template.ParseFiles("views/base.html", "views/"+tmplToParse[i]+".html")
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		tmpls[tmplToParse[i]] = t
 	}
-	tmpls["index"] = t
-	t, err = template.ParseFiles("views/base.html", "views/error.html")
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	tmpls["error"] = t
 	return tmpls
 }
