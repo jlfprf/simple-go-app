@@ -67,7 +67,7 @@ func changeDBData(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 		e := r.FormValue("e")
 		if u != "" && e != "" {
 			fmt.Println(u, e)
-			_, err := db.Exec("insert into users (name, email) values ($1, $2)", []byte(u), []byte(e))
+			_, err := db.Exec("insert into users (name, email) values ($1, $2)", u, e)
 			if err != nil {
 				fmt.Fprint(w, err.Error())
 			}
