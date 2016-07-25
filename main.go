@@ -46,12 +46,12 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	// c := r.Cookie("appck")
 	// if checkAuth(c.Value, db){}
 	// http.SetCookie(w, cookie)
-	err := tmplsParsed["index"].ExecuteTemplate(w, "Base", map[string]interface{}{"Title": "Default Templating with Maps"})
+	err := tmplsParsed["index"].ExecuteTemplate(w, "Layout", map[string]interface{}{"Title": "Default Templating with Maps"})
 	checkError(err, &w, r)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	err := tmplsParsed["login"].ExecuteTemplate(w, "Base", map[string]string{"Title": "Default Golang Templating"})
+	err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating"})
 	checkError(err, &w, r)
 }
 
@@ -65,7 +65,7 @@ func dbHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) {
-	err := tmplsParsed["error"].ExecuteTemplate(w, "Base", struct{ Title string }{Title: "Default Go Templating"})
+	err := tmplsParsed["error"].ExecuteTemplate(w, "Layout", struct{ Title string }{Title: "Default Go Templating"})
 	checkError(err, &w, r)
 }
 
@@ -81,7 +81,7 @@ func checkError(err error, w *http.ResponseWriter, r *http.Request) {
 func createTemplates(tmplToParse []string) map[string]*template.Template {
 	var tmpls = make(map[string]*template.Template)
 	for i := range tmplToParse {
-		t, err := template.ParseFiles("views/base.html", "views/"+tmplToParse[i]+".html")
+		t, err := template.ParseFiles("views/layout.html", "views/"+tmplToParse[i]+".html")
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
