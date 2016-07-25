@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var tmplToParse = []string{"index", "error"}
+var tmplToParse = []string{"index", "error", "login"}
 var tmplsParsed = make(map[string]*template.Template)
 
 func main() {
@@ -26,6 +26,7 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	http.HandleFunc("/", rootHandler)
+	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/db", dbHandler(db))
 	http.HandleFunc("/changedata", changeDBData(db))
 	http.HandleFunc("/error", errorHandler)
@@ -42,7 +43,15 @@ func main() {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
+	// c := r.Cookie("appck")
+	// if checkAuth(c.Value, db){}
+	// http.SetCookie(w, cookie)
 	err := tmplsParsed["index"].ExecuteTemplate(w, "Base", map[string]interface{}{"Title": "Default Templating with Maps"})
+	checkError(err, &w, r)
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	err := tmplsParsed["login"].ExecuteTemplate(w, "Base", map[string]string{"Title": "Default Golang Templating"})
 	checkError(err, &w, r)
 }
 
@@ -58,24 +67,6 @@ func dbHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 func errorHandler(w http.ResponseWriter, r *http.Request) {
 	err := tmplsParsed["error"].ExecuteTemplate(w, "Base", struct{ Title string }{Title: "Default Go Templating"})
 	checkError(err, &w, r)
-}
-
-//----------------------------Testing-----------------------------------
-func changeDBData(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		u := r.FormValue("u")
-		e := r.FormValue("e")
-		if u != "" && e != "" {
-			fmt.Println(u, e)
-			_, err := db.Exec("insert into users (name, email) values ($1, $2)", u, e)
-			if err != nil {
-				fmt.Fprint(w, err.Error())
-			}
-			fmt.Fprint(w, "Database updated")
-			return
-		}
-		fmt.Fprint(w, "You need to provide a user.")
-	}
 }
 
 //===========================Utils===================================
@@ -98,4 +89,31 @@ func createTemplates(tmplToParse []string) map[string]*template.Template {
 		tmpls[tmplToParse[i]] = t
 	}
 	return tmpls
+}
+
+// func authenticate(u, p string, db *sql.DB) string {
+// 	//confirm credentials and save session into db
+// 	//return random text session to create a cookie
+// }
+
+// func checkAuth(textRandon string, db *sql.DB) bool {
+// 	//get data from session cookie and check to see if it is in db
+// }
+
+//----------------------------Testing-----------------------------------
+func changeDBData(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := r.FormValue("u")
+		e := r.FormValue("e")
+		if u != "" && e != "" {
+			fmt.Println(u, e)
+			_, err := db.Exec("insert into users (name, email) values ($1, $2)", u, e)
+			if err != nil {
+				fmt.Fprint(w, err.Error())
+			}
+			fmt.Fprint(w, "Database updated")
+			return
+		}
+		fmt.Fprint(w, "You need to provide a user.")
+	}
 }
