@@ -5,7 +5,8 @@ My thinking is to use this app as boilerplate for future projects.
 ##Authentication
 In this app I will be using a db table to hold sessions information.
 The _**authenticate**_ function compares the data from login form with the user in db, 
-then creates a randon string to be saved into session table on db and to used as a session cookie.
+then creates a randon string to be saved into session table on db and to used as a session cookie if
+authentication fails return a void string.
 The _**checkAuth**_ function gets data from cookie session and check to see if it is present in session table on db.
 
 ##Templating
