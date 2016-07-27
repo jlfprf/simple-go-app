@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"math/rand"
 	"net/http"
 	"os"
+
+	"golang.org/x/crypto/bcrypt"
 
 	_ "github.com/lib/pq"
 )
@@ -26,7 +29,7 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	http.HandleFunc("/", rootHandler)
-	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/login", loginHandler(db))
 	http.HandleFunc("/db", dbHandler(db))
 	http.HandleFunc("/changedata", changeDBData(db))
 	http.HandleFunc("/error", errorHandler)
@@ -50,9 +53,20 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	checkError(err, &w, r)
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating"})
-	checkError(err, &w, r)
+func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := r.PostFormValue("u")
+		p := r.PostFormValue("p")
+		result := authenticate(u, p, db)
+		if result != "" {
+			ck := &http.Cookie{Name: "appck", Value: result, HttpOnly: true}
+			http.SetCookie(w, ck)
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
+		err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating"})
+		checkError(err, &w, r)
+	}
 }
 
 func dbHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
@@ -91,10 +105,24 @@ func createTemplates(tmplToParse []string) map[string]*template.Template {
 	return tmpls
 }
 
-// func authenticate(u, p string, db *sql.DB) string {
-// 	//confirm credentials and save session into db
-// 	//return random text session to create a cookie
-// }
+func authenticate(u, p string, db *sql.DB) string {
+	var username, hashedpass string
+	_ = db.QueryRow("select name, hashedpass from users where name = $1", u).Scan(&username, &hashedpass)
+	if bcrypt.CompareHashAndPassword([]byte(hashedpass), []byte(p)) == nil {
+		c := make([]byte, 32)
+		_, err := rand.Read(c)
+		if err == nil {
+			ckValue := fmt.Sprintf("%x", c)
+			_, err := db.Exec("insert into sessions (cookie, name) values ($1, $2)", ckValue, username)
+			if err == nil {
+				return ckValue
+			}
+		}
+	}
+	return ""
+	//confirm credentials and save session into db
+	//return random text session to create a cookie
+}
 
 // func checkAuth(textRandon string, db *sql.DB) bool {
 // 	//get data from session cookie and check to see if it is in db

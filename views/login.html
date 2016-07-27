@@ -1,17 +1,19 @@
 {{define "Body"}}
 <h1>{{.Title}}</h1>
 <h2>Enter your credentials to Log in</h2>
-<table>
-    <tr>
-        <td>User:</td>
-        <td><input type="text" name="u"></td>
-    </tr>
-    <tr>
-        <td>Password:</td>
-        <td><input type="text" name="p"></td>
-    </tr>
-    <tr>
-        <td colspan="2"><input type="submit" value="Log me in"></td>
-    </tr>
-</table>
+<form action="/login" method="POST">
+    <table>
+        <tr>
+            <td>User:</td>
+            <td><input type="text" class="jlftext" name="u"></td>
+        </tr>
+        <tr>
+            <td>Password:</td>
+            <td><input type="text" class="jlftext" name="p"></td>
+        </tr>
+        <tr>
+            <td colspan="2"><input type="submit" class="jlfbutton" value="Log me in"></td>
+        </tr>
+    </table>
+</form>
 {{end}}
