@@ -8,7 +8,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1 user-scalable=yes">
   </head>
   <body>
-    {{template "Body" .}}
+    <div class="header">
+      {{template "Header"}}
+    </div>
+    <div class="container">
+      {{template "Container" .}}
+    </div>
   </body>
 </html>
 {{end}}

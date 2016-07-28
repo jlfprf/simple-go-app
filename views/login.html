@@ -1,4 +1,4 @@
-{{define "Body"}}
+{{define "Container"}}
 <h1>{{.Title}}</h1>
 <h2>Enter your credentials to Log in</h2>
 <form action="/login" method="POST">
@@ -16,4 +16,7 @@
         </tr>
     </table>
 </form>
+{{end}}
+{{define "Header"}}
+This is the Header of my page
 {{end}}
