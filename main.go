@@ -13,7 +13,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var tmplToParse = []string{"index", "error", "login"}
+var tmplToParse = []string{"index", "error", "login", "private"}
 var tmplsParsed = make(map[string]*template.Template)
 
 func main() {
@@ -30,8 +30,7 @@ func main() {
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/login", loginHandler(db))
-	http.HandleFunc("/db", dbHandler(db))
-	http.HandleFunc("/changedata", changeDBData(db))
+	http.HandleFunc("/private", privateHandler(db))
 	http.HandleFunc("/error", errorHandler)
 
 	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
@@ -46,9 +45,6 @@ func main() {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	// c := r.Cookie("appck")
-	// if checkAuth(c.Value, db){}
-	// http.SetCookie(w, cookie)
 	err := tmplsParsed["index"].ExecuteTemplate(w, "Layout", map[string]interface{}{"Title": "Default Templating with Maps"})
 	checkError(err, &w, r)
 }
@@ -61,7 +57,7 @@ func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 		if result != "" {
 			ck := &http.Cookie{Name: "appck", Value: result, HttpOnly: true}
 			http.SetCookie(w, ck)
-			http.Redirect(w, r, "/", http.StatusFound)
+			http.Redirect(w, r, "/private", http.StatusFound)
 			return
 		}
 		err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating"})
@@ -69,13 +65,19 @@ func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func dbHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var name, email string
-		_ = db.QueryRow("select name, email from users where name = $1", "jlf").Scan(&name, &email)
-		s := fmt.Sprintf("Name: %s\nEmail: %s", name, email)
-		fmt.Fprint(w, s)
+		c, err := r.Cookie("appck")
+		if err == nil {
+			if checkAuth(c.Value, db) {
+				err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area"})
+				checkError(err, &w, r)
+				return
+			}
+		}
+		http.Redirect(w, r, "/login", http.StatusFound)
 	}
+
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) {
@@ -113,35 +115,24 @@ func authenticate(u, p string, db *sql.DB) string {
 		_, err := rand.Read(c)
 		if err == nil {
 			ckValue := fmt.Sprintf("%x", c)
-			_, err := db.Exec("insert into sessions (cookie, name) values ($1, $2)", ckValue, username)
+			_, err := db.Exec("delete from sessions where name=$1", username)
+			if err != nil {
+				return ""
+			}
+			_, err = db.Exec("insert into sessions (cookie, name) values ($1, $2)", ckValue, username)
 			if err == nil {
 				return ckValue
 			}
 		}
 	}
 	return ""
-	//confirm credentials and save session into db
-	//return random text session to create a cookie
 }
 
-// func checkAuth(textRandon string, db *sql.DB) bool {
-// 	//get data from session cookie and check to see if it is in db
-// }
-
-//----------------------------Testing-----------------------------------
-func changeDBData(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		u := r.FormValue("u")
-		e := r.FormValue("e")
-		if u != "" && e != "" {
-			fmt.Println(u, e)
-			_, err := db.Exec("insert into users (name, email) values ($1, $2)", u, e)
-			if err != nil {
-				fmt.Fprint(w, err.Error())
-			}
-			fmt.Fprint(w, "Database updated")
-			return
-		}
-		fmt.Fprint(w, "You need to provide a user.")
+func checkAuth(ssck string, db *sql.DB) bool {
+	var result string
+	_ = db.QueryRow("select cookie from sessions where cookie = $1", ssck).Scan(&result)
+	if result == ssck {
+		return true
 	}
+	return false
 }
