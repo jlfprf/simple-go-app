@@ -69,8 +69,8 @@ func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("appck")
 		if err == nil {
-			if checkAuth(c.Value, db) {
-				err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area"})
+			if usr := checkAuth(c.Value, db); usr != "" {
+				err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
 				checkError(err, &w, r)
 				return
 			}
@@ -128,11 +128,11 @@ func authenticate(u, p string, db *sql.DB) string {
 	return ""
 }
 
-func checkAuth(ssck string, db *sql.DB) bool {
-	var result string
-	_ = db.QueryRow("select cookie from sessions where cookie = $1", ssck).Scan(&result)
+func checkAuth(ssck string, db *sql.DB) string {
+	var result, user string
+	_ = db.QueryRow("select cookie, name from sessions where cookie = $1", ssck).Scan(&result, &user)
 	if result == ssck {
-		return true
+		return user
 	}
-	return false
+	return ""
 }
