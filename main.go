@@ -20,7 +20,7 @@ func main() {
 
 	tmplsParsed = createTemplates(tmplToParse)
 
-	db, err := sql.Open("postgres", "user=postgres password=mdibhf dbname=pgdatabase")
+	db, err := sql.Open("postgres", "user=postgres password=mdibhf dbname=simple_go_app")
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -110,7 +110,7 @@ func createTemplates(tmplToParse []string) map[string]*template.Template {
 func authenticate(u, p string, db *sql.DB) string {
 	var username, hashedpass string
 	_ = db.QueryRow("select name, hashedpass from users where name = $1", u).Scan(&username, &hashedpass)
-	if bcrypt.CompareHashAndPassword([]byte(hashedpass), []byte(p)) == nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedpass), []byte(p)); err == nil {
 		c := make([]byte, 32)
 		_, err := rand.Read(c)
 		if err == nil {

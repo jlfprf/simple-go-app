@@ -17,3 +17,6 @@ creates the templates into    _**tmplsParsed**_ to be used by the handlers.
 ```
 fmt.Println("this for code")
 ```
+
+##checkError
+This function aims at redirecting the user to a error page when an error happens that can be handled without closing the app altogether.
