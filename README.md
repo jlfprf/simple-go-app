@@ -19,4 +19,4 @@ fmt.Println("this for code")
 ```
 
 ##checkError
-This function aims at redirecting the user to a error page when an error happens that can be handled without closing the app altogether.
+This function aims at redirecting the user to an error page when an error happens that can be handled without closing the app altogether.

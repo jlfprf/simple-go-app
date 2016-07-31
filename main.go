@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"math/rand"
 	"net/http"
-	"os"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -23,7 +22,7 @@ func main() {
 	db, err := sql.Open("postgres", "user=postgres password=mdibhf dbname=simple_go_app")
 	if err != nil {
 		fmt.Println(err.Error())
-		os.Exit(1)
+		panic("Could not create the database pool with sql.Open().")
 	}
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -40,7 +39,8 @@ func main() {
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println(err.Error())
-		os.Exit(1)
+		// os.Exit(1)
+		panic("Error while trying to listen at port 8080.")
 	}
 }
 
@@ -100,7 +100,7 @@ func createTemplates(tmplToParse []string) map[string]*template.Template {
 		t, err := template.ParseFiles("views/layout.html", "views/"+tmplToParse[i]+".html")
 		if err != nil {
 			fmt.Println(err.Error())
-			os.Exit(1)
+			panic("Could not process the templates. Func createTemplates()")
 		}
 		tmpls[tmplToParse[i]] = t
 	}
