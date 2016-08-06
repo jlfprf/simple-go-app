@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"math/rand"
@@ -14,6 +15,8 @@ import (
 
 var tmplToParse = []string{"index", "error", "login", "private"}
 var tmplsParsed = make(map[string]*template.Template)
+
+const sessionCookieName = "appck"
 
 func main() {
 
@@ -49,27 +52,40 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	checkError(err, &w, r)
 }
 
+// func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		if r.Method == "POST" {
+// 			fmt.Println("Post")
+// 		}
+// 		u := r.PostFormValue("u")
+// 		p := r.PostFormValue("p")
+// 		result := authenticate(u, p, db)
+// 		if result != "" {
+// 			ck := &http.Cookie{Name: "appck", Value: result, HttpOnly: true}
+// 			http.SetCookie(w, ck)
+// 			http.Redirect(w, r, "/private", http.StatusFound)
+// 			return
+// 		}
+// 		err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating"})
+// 		checkError(err, &w, r)
+// 	}
+// }
+
 func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u := r.PostFormValue("u")
-		p := r.PostFormValue("p")
-		result := authenticate(u, p, db)
-		if result != "" {
-			ck := &http.Cookie{Name: "appck", Value: result, HttpOnly: true}
-			http.SetCookie(w, ck)
-			http.Redirect(w, r, "/private", http.StatusFound)
+		if r.Method == "POST" && authenticate(w, r, db) {
 			return
 		}
-		err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating"})
+		err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating - Login"})
 		checkError(err, &w, r)
 	}
 }
 
 func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie("appck")
+		ck, err := r.Cookie(sessionCookieName)
 		if err == nil {
-			if usr := checkAuth(c.Value, db); usr != "" {
+			if usr := checkAuth(ck.Value, db); usr != "" {
 				err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
 				checkError(err, &w, r)
 				return
@@ -107,27 +123,54 @@ func createTemplates(tmplToParse []string) map[string]*template.Template {
 	return tmpls
 }
 
-func authenticate(u, p string, db *sql.DB) string {
+// func authenticate(u, p string, db *sql.DB) string {
+// 	var username, hashedpass string
+// 	_ = db.QueryRow("select name, hashedpass from users where name = $1", u).Scan(&username, &hashedpass)
+// 	if err := bcrypt.CompareHashAndPassword([]byte(hashedpass), []byte(p)); err == nil {
+// 		c := make([]byte, 32)
+// 		_, err := rand.Read(c)
+// 		if err == nil {
+// 			ckValue := fmt.Sprintf("%x", c)
+// 			_, err := db.Exec("delete from sessions where name=$1", username)
+// 			if err != nil {
+// 				return ""
+// 			}
+// 			_, err = db.Exec("insert into sessions (cookie, name) values ($1, $2)", ckValue, username)
+// 			if err == nil {
+// 				return ckValue
+// 			}
+// 		}
+// 	}
+// 	return ""
+// }
+
+func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) bool {
+	u := r.PostFormValue("u")
+	p := r.PostFormValue("p")
 	var username, hashedpass string
 	_ = db.QueryRow("select name, hashedpass from users where name = $1", u).Scan(&username, &hashedpass)
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedpass), []byte(p)); err == nil {
 		c := make([]byte, 32)
 		_, err := rand.Read(c)
 		if err == nil {
-			ckValue := fmt.Sprintf("%x", c)
+			ssessionID := base64.URLEncoding.EncodeToString(c)
 			_, err := db.Exec("delete from sessions where name=$1", username)
 			if err != nil {
-				return ""
+				return false
 			}
-			_, err = db.Exec("insert into sessions (cookie, name) values ($1, $2)", ckValue, username)
+			_, err = db.Exec("insert into sessions (cookie, name) values ($1, $2)", ssessionID, username)
 			if err == nil {
-				return ckValue
+				ck := &http.Cookie{Name: sessionCookieName, Value: ssessionID, HttpOnly: true}
+				http.SetCookie(w, ck)
+				http.Redirect(w, r, "/private", http.StatusFound)
+				return true
 			}
 		}
 	}
-	return ""
+	return false
 }
 
+//isAuthenticated()
 func checkAuth(ssck string, db *sql.DB) string {
 	var result, user string
 	_ = db.QueryRow("select cookie, name from sessions where cookie = $1", ssck).Scan(&result, &user)
