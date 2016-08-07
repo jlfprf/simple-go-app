@@ -5,9 +5,8 @@ My thinking is to use this app as boilerplate for future projects.
 ##Authentication
 In this app I will be using a db table to hold sessions information.
 The _**authenticate**_ function compares the data from login form with the user in db, 
-then creates a randon string to be saved into session table on db and to used as a session cookie if
-authentication fails return a void string.
-The _**checkAuth**_ function gets data from cookie session and check to see if it is present in session table on db.
+then creates a randon string - _**sessionid**_ - to be saved into session table on db and to be used as a session cookie named _**appck**_ . It returns a bool to indicate success or failure.
+The _**isAuthenticated**_ function gets data from the cookie session and check to see if it is present in session table on db. Then returns a user name as a string and bool true if session is exists else return a void string and false.
 
 ##Templating
 It is used the default golang templating. It was created the global string array var _**tmplToParse**_ and 
