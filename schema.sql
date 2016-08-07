@@ -4,4 +4,4 @@ insert into users values (default, 'jlf', '243261243130244c7150432f35396337634d7
 select name, hashedpass from users where name = 'jlf' order by name desc;
 
 -- sessions table to save session information
-create table sessions (cookie text primary key not null, name text not null)
+create table sessions (sessionid text primary key not null, name text not null)

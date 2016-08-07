@@ -1,11 +1,11 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"html/template"
-	"math/rand"
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
@@ -52,25 +52,6 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	checkError(err, &w, r)
 }
 
-// func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		if r.Method == "POST" {
-// 			fmt.Println("Post")
-// 		}
-// 		u := r.PostFormValue("u")
-// 		p := r.PostFormValue("p")
-// 		result := authenticate(u, p, db)
-// 		if result != "" {
-// 			ck := &http.Cookie{Name: "appck", Value: result, HttpOnly: true}
-// 			http.SetCookie(w, ck)
-// 			http.Redirect(w, r, "/private", http.StatusFound)
-// 			return
-// 		}
-// 		err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating"})
-// 		checkError(err, &w, r)
-// 	}
-// }
-
 func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" && authenticate(w, r, db) {
@@ -83,13 +64,10 @@ func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 
 func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ck, err := r.Cookie(sessionCookieName)
-		if err == nil {
-			if usr := checkAuth(ck.Value, db); usr != "" {
-				err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
-				checkError(err, &w, r)
-				return
-			}
+		if usr, ok := isAuthenticated(r, db); ok {
+			err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
+			checkError(err, &w, r)
+			return
 		}
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
@@ -123,27 +101,6 @@ func createTemplates(tmplToParse []string) map[string]*template.Template {
 	return tmpls
 }
 
-// func authenticate(u, p string, db *sql.DB) string {
-// 	var username, hashedpass string
-// 	_ = db.QueryRow("select name, hashedpass from users where name = $1", u).Scan(&username, &hashedpass)
-// 	if err := bcrypt.CompareHashAndPassword([]byte(hashedpass), []byte(p)); err == nil {
-// 		c := make([]byte, 32)
-// 		_, err := rand.Read(c)
-// 		if err == nil {
-// 			ckValue := fmt.Sprintf("%x", c)
-// 			_, err := db.Exec("delete from sessions where name=$1", username)
-// 			if err != nil {
-// 				return ""
-// 			}
-// 			_, err = db.Exec("insert into sessions (cookie, name) values ($1, $2)", ckValue, username)
-// 			if err == nil {
-// 				return ckValue
-// 			}
-// 		}
-// 	}
-// 	return ""
-// }
-
 func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) bool {
 	u := r.PostFormValue("u")
 	p := r.PostFormValue("p")
@@ -158,7 +115,7 @@ func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) bool {
 			if err != nil {
 				return false
 			}
-			_, err = db.Exec("insert into sessions (cookie, name) values ($1, $2)", ssessionID, username)
+			_, err = db.Exec("insert into sessions (sessionid, name) values ($1, $2)", ssessionID, username)
 			if err == nil {
 				ck := &http.Cookie{Name: sessionCookieName, Value: ssessionID, HttpOnly: true}
 				http.SetCookie(w, ck)
@@ -170,12 +127,15 @@ func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) bool {
 	return false
 }
 
-//isAuthenticated()
-func checkAuth(ssck string, db *sql.DB) string {
-	var result, user string
-	_ = db.QueryRow("select cookie, name from sessions where cookie = $1", ssck).Scan(&result, &user)
-	if result == ssck {
-		return user
+func isAuthenticated(r *http.Request, db *sql.DB) (string, bool) {
+	ck, err := r.Cookie(sessionCookieName)
+	if err == nil {
+		var result, user string
+		row := db.QueryRow("select sessionid, name from sessions where sessionid = $1", ck.Value)
+		row.Scan(&result, &user)
+		if result != "" {
+			return user, true
+		}
 	}
-	return ""
+	return "", false
 }
