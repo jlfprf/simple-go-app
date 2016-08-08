@@ -48,13 +48,11 @@ func main() {
 }
 
 //------------------------------------To redirect https--------------------------
-// if IN_HEROKU {
 // 		h := r.Header
 // 		if h.Get("x-forwarded-proto") != "https" {
 // 			http.Redirect(w, r, "https://"+r.Host+r.URL.Path, http.StatusFound)
 // 			return
 // 		}
-// 	}
 //-------------------------------------------------------------------------------
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
