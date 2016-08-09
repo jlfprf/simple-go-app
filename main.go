@@ -77,13 +77,13 @@ func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 
 func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		usr, err := isAuthenticated(r, db)
-		if err != nil {
+		usr, ok := isAuthenticated(r, db)
+		if !ok {
 			// fmt.Println(err.Error())
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
-		err = tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
+		err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
 		checkError(err, &w, r)
 		return
 	}
@@ -92,7 +92,9 @@ func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 
 func errorHandler(w http.ResponseWriter, r *http.Request) {
 	err := tmplsParsed["error"].ExecuteTemplate(w, "Layout", struct{ Title string }{Title: "Default Go Templating"})
-	checkError(err, &w, r)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	}
 }
 
 //===========================Utils===================================
@@ -143,15 +145,36 @@ func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) error {
 	return errors.New("There was an error while authenticating the user.")
 }
 
-func isAuthenticated(r *http.Request, db *sql.DB) (string, error) {
+func isAuthenticated(r *http.Request, db *sql.DB) (string, bool) {
 	ck, err := r.Cookie(sessionCookieName)
 	if err == nil {
 		var result, user string
 		row := db.QueryRow("select sessionid, name from sessions where sessionid = $1", ck.Value)
 		row.Scan(&result, &user)
 		if result != "" {
-			return user, nil
+			return user, true
 		}
 	}
-	return "", errors.New("Sessionid not found.")
+	return "", false
 }
+
+// func isAuthenticated(r *http.Request, db *sql.DB) (string, error) {
+// 	ck, err := r.Cookie(sessionCookieName)
+// 	if err == nil {
+// 		var result, user string
+// 		row := db.QueryRow("select sessionid, name from sessions where sessionid = $1", ck.Value)
+// 		row.Scan(&result, &user)
+// 		if result != "" {
+// 			return user, nil
+// 		}
+// 	}
+// 	return "", &authErr{e: "Sessionid not found."} //errors.New("Sessionid not found.")
+// }
+
+// type authErr struct {
+// 	e string
+// }
+
+// func (e *authErr) Error() string {
+// 	return e.e
+// }
