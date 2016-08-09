@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -62,8 +63,12 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" && authenticate(w, r, db) {
-			return
+		if r.Method == "POST" {
+			err := authenticate(w, r, db)
+			if err == nil {
+				http.Redirect(w, r, "/private", http.StatusFound)
+				return
+			}
 		}
 		err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating - Login"})
 		checkError(err, &w, r)
@@ -72,12 +77,15 @@ func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 
 func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if usr, ok := isAuthenticated(r, db); ok {
-			err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
-			checkError(err, &w, r)
+		usr, err := isAuthenticated(r, db)
+		if err != nil {
+			// fmt.Println(err.Error())
+			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusFound)
+		err = tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
+		checkError(err, &w, r)
+		return
 	}
 
 }
@@ -109,7 +117,7 @@ func createTemplates(tmplToParse []string) map[string]*template.Template {
 	return tmpls
 }
 
-func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) bool {
+func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) error {
 	u := r.PostFormValue("u")
 	p := r.PostFormValue("p")
 	var username, hashedpass string
@@ -121,29 +129,29 @@ func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) bool {
 			ssessionID := base64.URLEncoding.EncodeToString(c)
 			_, err := db.Exec("delete from sessions where name=$1", username)
 			if err != nil {
-				return false
+				return errors.New("Error while trying to delete old session from db.")
 			}
 			_, err = db.Exec("insert into sessions (sessionid, name) values ($1, $2)", ssessionID, username)
 			if err == nil {
 				ck := &http.Cookie{Name: sessionCookieName, Value: ssessionID, HttpOnly: true}
 				http.SetCookie(w, ck)
-				http.Redirect(w, r, "/private", http.StatusFound)
-				return true
+				// http.Redirect(w, r, "/private", http.StatusFound)
+				return nil
 			}
 		}
 	}
-	return false
+	return errors.New("There was an error while authenticating the user.")
 }
 
-func isAuthenticated(r *http.Request, db *sql.DB) (string, bool) {
+func isAuthenticated(r *http.Request, db *sql.DB) (string, error) {
 	ck, err := r.Cookie(sessionCookieName)
 	if err == nil {
 		var result, user string
 		row := db.QueryRow("select sessionid, name from sessions where sessionid = $1", ck.Value)
 		row.Scan(&result, &user)
 		if result != "" {
-			return user, true
+			return user, nil
 		}
 	}
-	return "", false
+	return "", errors.New("Sessionid not found.")
 }
