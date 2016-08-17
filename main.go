@@ -23,13 +23,15 @@ func main() {
 
 	tmplsParsed = createTemplates(tmplToParse)
 
-	db, err := sql.Open("postgres", "user=postgres password=mdibhf dbname=simple_go_app")
+	// postgresql://user:secret@localhost:5432/dbname
+	// db, err := sql.Open("postgres", "user=postgres password=postgres dbname=simple_go_app sslmode=disable")
+	db, err := sql.Open("postgres", "host=172.17.0.2 port=5432 user=postgres password=postgres dbname=postgres sslmode=disable")
 	if err != nil {
 		fmt.Println(err.Error())
 		panic("Could not create the database pool with sql.Open().")
 	}
-
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	//http.Handle("/static/", http.FileServer(http.Dir("static")))
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/login", loginHandler(db))
@@ -39,11 +41,11 @@ func main() {
 	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "This is from a closure")
 	})
+	http.HandleFunc("/usertest", usertestHandler(db))
 
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println(err.Error())
-		// os.Exit(1)
 		panic("Error while trying to listen at port 8080.")
 	}
 }
@@ -178,3 +180,11 @@ func isAuthenticated(r *http.Request, db *sql.DB) (string, bool) {
 // func (e *authErr) Error() string {
 // 	return e.e
 // }
+
+func usertestHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var username, hashedpass string
+		_ = db.QueryRow("select name, hashedpass from users where name = $1", "jlf").Scan(&username, &hashedpass)
+		fmt.Fprint(w, "User: "+username+"\nP: "+hashedpass)
+	}
+}
