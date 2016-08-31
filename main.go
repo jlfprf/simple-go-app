@@ -140,10 +140,10 @@ func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) error {
 func isAuthenticated(r *http.Request, db *sql.DB) (string, bool) {
 	ck, err := r.Cookie(sessionCookieName)
 	if err == nil {
-		var result, user string
+		var sessionid, user string
 		row := db.QueryRow("select sessionid, name from sessions where sessionid = $1", ck.Value)
-		row.Scan(&result, &user)
-		if result != "" {
+		row.Scan(&sessionid, &user)
+		if sessionid != "" {
 			return user, true
 		}
 	}
