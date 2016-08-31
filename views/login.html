@@ -1,18 +1,21 @@
-{{define "Container"}}
-<h1>{{.Title}}</h1>
-<form action="/login" method="POST">
-    <table>
-        <tr>
-            <td>User:</td>
-            <td><input type="text" class="jlftext" name="u"></td>
-        </tr>
-        <tr>
-            <td>Password:</td>
-            <td><input type="text" class="jlftext" name="p"></td>
-        </tr>
-        <tr>
-            <td colspan="2"><input type="submit" class="jlfbutton" value="Log me in"></td>
-        </tr>
-    </table>
-</form>
-{{end}}
+{{template "Head" .}}
+{{template "Header" .}}
+<div class="container">
+    <h1>{{.Title}}</h1>
+    <form action="/login" method="POST">
+        <table>
+            <tr>
+                <td>User:</td>
+                <td><input type="text" class="jlftext" name="u" autofocus></td>
+            </tr>
+            <tr>
+                <td>Password:</td>
+                <td><input type="text" class="jlftext" name="p"></td>
+            </tr>
+            <tr>
+                <td colspan="2"><input type="submit" class="jlfbutton" value="Log me in"></td>
+            </tr>
+        </table>
+    </form>
+</div>
+{{template "Foot" .}}

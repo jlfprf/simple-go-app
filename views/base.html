@@ -1,4 +1,4 @@
-{{define "Layout"}}
+{{define "Head"}}
 <!DOCTYPE html>
 <html>
   <head>
@@ -10,17 +10,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1 user-scalable=yes">
   </head>
   <body>
-    <div class="header">
-      {{template "Header" .}}
-    </div>
-    <div class="container">
-      {{template "Container" .}}
-    </div>
+{{end}}
+
+{{define "Foot"}}    
   </body>
 </html>
 {{end}}
+
 {{define "Header"}}
-<span>
-  How to create a header that is to good to be forgotten?
-</span>
+<div class="header">
+    <span>
+    How to create a header that is to good to be forgotten?
+    </span>
+</div>
 {{end}}

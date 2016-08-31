@@ -1,4 +1,7 @@
-{{define "Container"}}
-<h3>User: {{.User}}</h3>
-<p>You have entered into an private area after providing your credentials.</p>
-{{end}}
+{{template "Head" .}}
+{{template "Header" .}}
+<div class="container">
+    <h3>User: {{.User}}</h3>
+    <p>You have entered into an private area after providing your credentials.</p>
+</div>
+{{template "Foot" .}}

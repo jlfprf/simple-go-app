@@ -14,14 +14,17 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var tmplToParse = []string{"index", "error", "login", "private"}
-var tmplsParsed = make(map[string]*template.Template)
-
 const sessionCookieName = "appck"
+
+var tmpl *template.Template
 
 func main() {
 
-	tmplsParsed = createTemplates(tmplToParse)
+	var e error
+	tmpl, e = template.ParseGlob("views/*.html")
+	if e != nil {
+		panic("Error while parsing templates -> " + e.Error())
+	}
 
 	// postgresql://user:secret@localhost:5432/dbname
 	// db, err := sql.Open("postgres", "user=postgres password=postgres dbname=simple_go_app sslmode=disable")
@@ -43,7 +46,7 @@ func main() {
 	})
 	http.HandleFunc("/usertest", usertestHandler(db))
 
-	err = http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":80", nil)
 	if err != nil {
 		fmt.Println(err.Error())
 		panic("Error while trying to listen at port 8080.")
@@ -59,7 +62,7 @@ func main() {
 //-------------------------------------------------------------------------------
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	err := tmplsParsed["index"].ExecuteTemplate(w, "Layout", map[string]interface{}{"Title": "Default Templating with Maps"})
+	err := tmpl.ExecuteTemplate(w, "index.html", map[string]interface{}{"Title": "Default Templating with Maps"})
 	checkError(err, &w, r)
 }
 
@@ -72,7 +75,7 @@ func loginHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		err := tmplsParsed["login"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Default Golang Templating - Login"})
+		err := tmpl.ExecuteTemplate(w, "login.html", map[string]string{"Title": "Default Golang Templating - Login"})
 		checkError(err, &w, r)
 	}
 }
@@ -85,7 +88,7 @@ func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
-		err := tmplsParsed["private"].ExecuteTemplate(w, "Layout", map[string]string{"Title": "Private Area", "User": usr})
+		err := tmpl.ExecuteTemplate(w, "private.html", map[string]string{"Title": "Private Area", "User": usr})
 		checkError(err, &w, r)
 		return
 	}
@@ -93,7 +96,7 @@ func privateHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) {
-	err := tmplsParsed["error"].ExecuteTemplate(w, "Layout", struct{ Title string }{Title: "Default Go Templating"})
+	err := tmpl.ExecuteTemplate(w, "error.html", struct{ Title string }{Title: "Default Go Templating"})
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
@@ -106,19 +109,6 @@ func checkError(err error, w *http.ResponseWriter, r *http.Request) {
 		http.Redirect(*w, r, "/error", http.StatusFound)
 		return
 	}
-}
-
-func createTemplates(tmplToParse []string) map[string]*template.Template {
-	var tmpls = make(map[string]*template.Template)
-	for i := range tmplToParse {
-		t, err := template.ParseFiles("views/layout.html", "views/"+tmplToParse[i]+".html")
-		if err != nil {
-			fmt.Println(err.Error())
-			panic("Could not process the templates. Func createTemplates()")
-		}
-		tmpls[tmplToParse[i]] = t
-	}
-	return tmpls
 }
 
 func authenticate(w http.ResponseWriter, r *http.Request, db *sql.DB) error {
@@ -160,26 +150,7 @@ func isAuthenticated(r *http.Request, db *sql.DB) (string, bool) {
 	return "", false
 }
 
-// func isAuthenticated(r *http.Request, db *sql.DB) (string, error) {
-// 	ck, err := r.Cookie(sessionCookieName)
-// 	if err == nil {
-// 		var result, user string
-// 		row := db.QueryRow("select sessionid, name from sessions where sessionid = $1", ck.Value)
-// 		row.Scan(&result, &user)
-// 		if result != "" {
-// 			return user, nil
-// 		}
-// 	}
-// 	return "", &authErr{e: "Sessionid not found."} //errors.New("Sessionid not found.")
-// }
-
-// type authErr struct {
-// 	e string
-// }
-
-// func (e *authErr) Error() string {
-// 	return e.e
-// }
+//------------------------------------------Testing--------------------------------------------------
 
 func usertestHandler(db *sql.DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {

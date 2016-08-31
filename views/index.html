@@ -1,4 +1,7 @@
-{{define "Container"}}
-<h1>{{.Title}}</h1>
-<p>Welcome to {{.Title}}</p>
-{{end}}
+{{template "Head" .}}
+{{template "Header" .}}
+<div class="container">
+    <h1>{{.Title}}</h1>
+    <p>Welcome to {{.Title}}</p>
+</div>
+{{template "Foot" .}}
